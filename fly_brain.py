@@ -65,6 +65,12 @@ class FlyBrain:
         self.neurons.v = self.El
         self.neurons.I = 0 * amp
 
+        # Lookup: root_id → neuron index (needed before building synapses)
+        self.root_id_to_idx = {
+            root_id: idx
+            for idx, root_id in enumerate(self.neurons_df['root_id'].values)
+        }
+
         # Build synapses
         self._log(f"  Building {self.n_synapses} synapses...")
         self._build_synapses()
@@ -72,13 +78,7 @@ class FlyBrain:
         # Monitors for debugging
         self.spikes = SpikeMonitor(self.neurons)
 
-        # Lookup: root_id → neuron index
-        self.root_id_to_idx = {
-            root_id: idx
-            for idx, root_id in enumerate(self.neurons_df['root_id'].values)
-        }
-
-        self._log("✓ FlyBrain initialized")
+        self._log("[OK] FlyBrain initialized")
 
     def _build_synapses(self):
         """Construct synaptic connectivity from FlyWire data"""
@@ -139,20 +139,35 @@ class FlyBrain:
         self.synapses.connect(i=pre_indices, j=post_indices)
         self.synapses.w[:] = weights * pA
 
-        self._log(f"    ✓ {len(self.synapses)} synapses connected")
+        self._log(f"    [OK] {len(self.synapses)} synapses connected")
 
     def inject_sensory(self, sensory_input):
         """
         Inject sensory input into designated sensory neurons.
 
         Args:
-            sensory_input: dict of {neuron_indices: activation (amp)}
-                           e.g., {range(100, 200): 50*pA}
+            sensory_input: dict of {neuron_root_ids: activation}
+                           Activation in pA (dimensionless values are converted)
         """
-        for indices, activation in sensory_input.items():
-            if isinstance(indices, (list, np.ndarray, range)):
-                indices = np.array(list(indices))
-            self.neurons.I[indices] += activation
+        for root_ids, activation in sensory_input.items():
+            # Convert root IDs to neuron indices
+            if isinstance(root_ids, (list, tuple)):
+                root_ids = list(root_ids)
+            elif isinstance(root_ids, (np.ndarray, range)):
+                root_ids = list(root_ids)
+
+            # Map root IDs to indices
+            neuron_indices = []
+            for rid in root_ids:
+                if rid in self.root_id_to_idx:
+                    neuron_indices.append(self.root_id_to_idx[rid])
+
+            if neuron_indices:
+                neuron_indices = np.array(neuron_indices)
+                # Ensure activation has proper units
+                if not hasattr(activation, 'units'):
+                    activation = activation * pA
+                self.neurons.I[neuron_indices] += activation
 
     def step(self, duration_ms=50):
         """
@@ -168,10 +183,16 @@ class FlyBrain:
         Get spike count for neurons in last step.
 
         Args:
-            neuron_indices: Indices to read
+            neuron_indices: Indices to read (range, list, or array)
             reset: Clear spike monitor after reading
         """
-        spikes = np.sum(self.spikes.i == neuron_indices)
+        if isinstance(neuron_indices, range):
+            neuron_indices = set(neuron_indices)
+        elif not isinstance(neuron_indices, set):
+            neuron_indices = set(neuron_indices)
+
+        # Count spikes from this set of neurons
+        spikes = np.sum(np.isin(self.spikes.i, list(neuron_indices)))
         if reset:
             self.spikes.record = False
             self.spikes.record = True
