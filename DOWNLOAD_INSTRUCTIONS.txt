@@ -1,0 +1,74 @@
+============================================================
+DOWNLOADING FLYWIRE FAFB v783 DATA
+============================================================
+
+YOUR BROWSER IS OPEN TO: https://codex.flywire.ai/
+
+STEP 1: Download these 3 files from the FlyWire Codex page
+================================================
+
+File 1: Cell Types (902 KB)
+  → Click "Cell Types"
+  → Save as: cell_types.csv
+  → Location: C:\Users\dylan\Downloads\flybrain\
+
+File 2: Synapse Table (2,695 MB) ← THE BIG ONE
+  → Click "Synapse Table"
+  → Save as: synapse_table.csv
+  → Location: C:\Users\dylan\Downloads\flybrain\
+  → WARNING: This is 2.7 GB and will take 5-10 minutes
+
+File 3: Neurotransmitter Type Predictions (1,680 KB)
+  → Click "Neurotransmitter Type Predictions"
+  → Save as: neurotransmitter_predictions.csv
+  → Location: C:\Users\dylan\Downloads\flybrain\
+
+Optional File 4: Marked Neuron Coordinates (5,315 KB)
+  → Click "Marked Neuron Coordinates"
+  → Save as: marked_neuron_coordinates.csv
+  → This helps with spatial info (recommended)
+
+
+STEP 2: Once files are downloaded
+================================================
+
+Double-click this file:
+  RUN_WITH_FLYWIRE.bat
+
+OR manually:
+  1. Open PowerShell in this directory
+  2. Run: python parse_flywire.py
+     (This converts FlyWire CSVs to simulator format)
+  3. Run: python simulate_headless.py
+     (This runs the simulator with the REAL FLY BRAIN!)
+
+
+WHAT'S HAPPENING
+================================================
+
+The parser will:
+  - Load 139,255 REAL neurons
+  - Load 50,666,648 REAL synapses
+  - Extract sensory and motor neuron populations
+  - Create fly_neurons.csv and fly_synapses.csv
+
+The simulator will:
+  - Use the ACTUAL FlyWire connectome
+  - Show real neural dynamics
+  - Display motor command output
+  - Generate simulation_results.png
+
+
+TIPS
+================================================
+
+✓ Download happens in your browser (we can't see it)
+✓ Files are ~3 GB total - make sure you have space
+✓ Synapse Table is the biggest file (2.7 GB)
+✓ Once all files are in the flybrain folder, just run RUN_WITH_FLYWIRE.bat
+✓ Parser handles any filename variations
+
+
+YOU'RE ABOUT TO FLY A REAL FRUIT FLY BRAIN! 🧠✈️
+
+Good luck!
