@@ -35,6 +35,16 @@ def run_simulation(duration_sec=10, dt_ms=50):
 
     print("\n[4/4] Starting simulation loop...")
 
+    # Inject baseline motor drive to enable flight (Option C)
+    print("[+] Injecting baseline motor drive (200 pA)...")
+    all_motor_neurons = (
+        decoder.FORWARD_NEURONS +
+        decoder.LEFT_TURN_NEURONS +
+        decoder.RIGHT_TURN_NEURONS +
+        decoder.CLIMB_NEURONS
+    )
+    brain.inject_baseline_motor_drive(all_motor_neurons, drive_strength=200)
+
     timesteps = int(duration_sec * 1000 / dt_ms)
 
     positions = []

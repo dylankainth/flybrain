@@ -10,11 +10,12 @@ import numpy as np
 class FlyBrain:
     """127k neuron LIF model with FlyWire connectome"""
 
-    # LIF parameters (from Shiu et al. 2024)
-    El = -65 * mV          # Resting potential
+    # LIF parameters adjusted for synthetic connectome
+    # (Original Shiu et al. parameters don't work with sparse synthetic data)
+    El = -70 * mV          # Resting potential (more negative)
     EI = -90 * mV          # Inhibitory reversal
-    tau = 10 * ms          # Membrane time constant
-    Vt = -50 * mV          # Spike threshold
+    tau = 20 * ms          # Membrane time constant (slower integration)
+    Vt = -50 * mV          # Spike threshold (same)
 
     def __init__(self, synapse_file='fly_synapses.csv',
                  neuron_file='fly_neurons.csv',
@@ -45,7 +46,7 @@ class FlyBrain:
         start_scope()
 
         eqs = '''
-        dv/dt = (El - v + I) / tau : volt
+        dv/dt = (El - v) / tau + I / (10*pfarad) : volt
         I : amp
         '''
 
@@ -177,6 +178,31 @@ class FlyBrain:
             duration_ms: Duration in milliseconds
         """
         run(duration_ms * ms)
+
+    def set_baseline_motor_drive(self, motor_indices, drive_strength=300):
+        """
+        Store baseline motor drive to inject continuously.
+        Simulates tonic drive for flight maintenance.
+
+        Args:
+            motor_indices: list of motor neuron root IDs
+            drive_strength: constant current in pA
+        """
+        self.baseline_motor_drive_indices = []
+        for rid in motor_indices:
+            if rid in self.root_id_to_idx:
+                self.baseline_motor_drive_indices.append(self.root_id_to_idx[rid])
+
+        self.baseline_motor_drive_strength = drive_strength * pA if drive_strength > 0 else 0 * pA
+
+        if self.baseline_motor_drive_indices:
+            self.baseline_motor_drive_indices = np.array(self.baseline_motor_drive_indices)
+            self._log(f"  Motor baseline drive: {len(self.baseline_motor_drive_indices)} neurons at {drive_strength} pA")
+
+    def apply_baseline_motor_drive(self):
+        """Apply baseline motor drive (call at start of each step)"""
+        if hasattr(self, 'baseline_motor_drive_indices') and len(self.baseline_motor_drive_indices) > 0:
+            self.neurons.I[self.baseline_motor_drive_indices] += self.baseline_motor_drive_strength
 
     def get_spikes(self, neuron_indices, reset=False):
         """
