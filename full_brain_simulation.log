@@ -1,0 +1,87 @@
+======================================================================
+FULL BRAIN SIMULATOR - Sampled (Unbuffered)
+======================================================================
+
+[1/4] Loading and sampling connectome...
+  Loaded 139,255 neurons
+  Loading synapses (1 in 10 sample)...
+    Chunk 5: 500,000 synapses sampled
+    Chunk 10: 1,000,000 synapses sampled
+    Chunk 15: 1,500,000 synapses sampled
+    Chunk 20: 2,000,000 synapses sampled
+    Chunk 25: 2,500,000 synapses sampled
+    Chunk 30: 3,000,000 synapses sampled
+    Chunk 35: 3,500,000 synapses sampled
+    Chunk 40: 4,000,000 synapses sampled
+    Chunk 45: 4,500,000 synapses sampled
+    Chunk 50: 5,000,000 synapses sampled
+    Chunk 55: 5,500,000 synapses sampled
+    Chunk 60: 6,000,000 synapses sampled
+    Chunk 65: 6,500,000 synapses sampled
+    Chunk 70: 7,000,000 synapses sampled
+    Chunk 75: 7,500,000 synapses sampled
+    Chunk 80: 8,000,000 synapses sampled
+  Final: 8,021,579 synapses sampled
+  Load time: 68.8s
+
+[2/4] Building sparse connectivity matrix...
+  Connectivity: 4,920,890 synapses
+  Sparsity: 0.0254%
+  Build time: 4.1s
+
+[3/4] Running simulation...
+  Duration: 10s (10,000 timesteps)
+  Neurons: 139,255 (123,238 excitatory, 16,017 inhibitory)
+  [  1.00s] Spikes:      0 (   0.0 Hz)
+  [  2.00s] Spikes:      0 (   0.0 Hz)
+  [  3.00s] Spikes:      0 (   0.0 Hz)
+  [  4.00s] Spikes:      0 (   0.0 Hz)
+  [  5.00s] Spikes:      0 (   0.0 Hz)
+  [  6.00s] Spikes:      0 (   0.0 Hz)
+  [  7.00s] Spikes:      0 (   0.0 Hz)
+  [  8.00s] Spikes:      0 (   0.0 Hz)
+  [  9.00s] Spikes:      0 (   0.0 Hz)
+  [ 10.00s] Spikes:      0 (   0.0 Hz)
+  Simulation time: 637.8s
+
+[4/4] Results Analysis
+======================================================================
+FULL BRAIN SIMULATION - SAMPLED (8M SYNAPSES)
+======================================================================
+
+Network:
+  Total neurons: 139,255
+  Total synapses (sampled): 8,021,579
+  Connectivity density: 0.0254%
+
+Activity (10-second run):
+  Total spikes: 0.0
+  Avg firing rate: 0.0 Hz
+  Peak: 0 spikes/100ms
+  Mean: 0.0 Hz
+
+Top 10 most active neurons:
+   1. ID 139254 (R1-6      ):    0.0 Hz
+   2. ID 139253 (CB0904    ):    0.0 Hz
+   3. ID 139252 (KCab-p    ):    0.0 Hz
+   4. ID 139251 (TmY3      ):    0.0 Hz
+   5. ID 139250 (CB0180    ):    0.0 Hz
+   6. ID 139249 (CB2303    ):    0.0 Hz
+   7. ID 139248 (CB2488    ):    0.0 Hz
+   8. ID 139247 (LTe09     ):    0.0 Hz
+   9. ID 139246 (MTe07     ):    0.0 Hz
+  10. ID 139245 (L4        ):    0.0 Hz
+
+Performance:
+  Load: 68.8s | Build: 4.1s | Sim: 637.8s
+  Total: 710.8s
+  Speedup: 0.0x real-time
+
+Memory:
+  Connectivity: 39.4 MB
+  States: 2.2 MB
+  Total: ~40.5 MB
+
+======================================================================
+[SUCCESS] FULL BRAIN INFRASTRUCTURE OPERATIONAL
+======================================================================

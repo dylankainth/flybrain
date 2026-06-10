@@ -1,0 +1,15 @@
+{
+  "n_neurons": 139255,
+  "n_synapses": 8021579,
+  "total_spikes": 0,
+  "mean_firing_rate": 0.0,
+  "peak_activity": 0,
+  "simulation_time": 664.7838640213013,
+  "performance": {
+    "load_time": 54.97489523887634,
+    "build_time": 2.4995453357696533,
+    "sim_time": 664.7838640213013,
+    "total_time": 722.2583045959473,
+    "speedup": 0.015042483040291687
+  }
+}
