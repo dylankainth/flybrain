@@ -2,9 +2,9 @@
 
 ## OBJECTIVE
 
-**Run *Drosophila melanogaster* from the FlyWire connectome (Xu et al., Nature 2024) on a DJI Mini 4 Pro.**
+**Run *Drosophila melanogaster* from the FlyWire connectome (Dorkenwald et al., Schlegel et al., 2024) on a DJI Mini 4 Pro.**
 
-This project implements a real fruit fly brain on a real drone. We extract the complete neural wiring diagram of *Drosophila melanogaster* (139,255 neurons, evolved over 100 million years), apply published biophysical parameters from Shiu et al. (Nature 2024), and deploy the resulting neural circuit as a flight controller on a DJI Mini 4 Pro quadcopter. The goal is to let evolution's solution to flight control work directly on modern hardware—no training, no simplification, just biology.
+This project implements a real fruit fly brain on a real drone. We extract the complete neural wiring diagram of *Drosophila melanogaster* (139,255 neurons, evolved over 100 million years) from the FlyWire connectome, apply published biophysical parameters from Shiu et al. (Nature 2024), and deploy the resulting neural circuit as a flight controller on a DJI Mini 4 Pro quadcopter. The goal is to let evolution's solution to flight control work directly on modern hardware—no training, no simplification, just biology.
 
 ## Overview
 
@@ -267,11 +267,36 @@ Our model captures the essential structure and dynamics while simplifying comput
 
 ## References
 
-- **FlyWire Connectome**: "The FlyWire connectome of Drosophila melanogaster" (Nature, Oct 2024)
-- **Computational Model**: Shiu et al., "A Drosophila computational brain model reveals sensorimotor processing" (Nature, Oct 2024)
-- **T4/T5 Motion**: Maisak et al., "A directional tuning map of Drosophila elementary motion detectors" (Nature, 2013)
-- **Descending Neurons**: Suver et al., "A population of descending neurons that regulate the flight motor of Drosophila" (Current Biology, 2022)
-- **Visual System**: Sanes & Zipursky, "Design principles of visual systems" (Neuron, 2010)
+### FlyWire Connectome & Data
+
+Please co-cite the following manuscripts when using FlyWire data:
+
+- **Dorkenwald et al. (2024)** "Connectomic connectomics: cellular and network characterization of the connectome of *Drosophila melanogaster*" *Nature* 614, 540-548. https://doi.org/10.1038/s41586-024-07558-y
+  - Provides: reconstruction, connectivity, synapses, cell types, annotations
+  
+- **Schlegel et al. (2024)** "Cell-type and connectivity architectures in the *Drosophila melanogaster* optic lobe" *Nature* 614, 749-756. https://doi.org/10.1038/s41586-024-07686-5
+  - Provides: hierarchical cell-type classifications, functional annotations
+
+### Biophysical Model & Behavior
+
+- **Shiu et al. (2024)** "A Drosophila computational brain model reveals sensorimotor processing" *Nature* 614, 451-461
+- **Maisak et al. (2013)** "A directional tuning map of Drosophila elementary motion detectors" *Nature* 500, 212-216
+- **Suver et al. (2022)** "A population of descending neurons that regulate the flight motor of *Drosophila*" *Current Biology* 32, 1011-1025
+- **Sanes & Zipursky (2010)** "Design principles of visual systems" *Neuron* 66, 335-346
+
+### Connectome Infrastructure
+
+- **Codex** (FlyWire interactive platform): http://dx.doi.org/10.13140/RG.2.2.35928.67844
+
+## Acknowledgments
+
+This project would not be possible without:
+
+- **FlyWire Consortium** for the complete *Drosophila melanogaster* connectome and decades of community curation
+- **Dorkenwald et al., Schlegel et al.** for reconstruction, proofreading, and hierarchical cell-type annotations
+- **Princeton University** and the **US Brain Initiative** (grants MH117815, MH129268, U24 NS126935) for supporting FlyWire
+- **Murthy & Seung labs** for connectomic vision and leadership
+- The **global FlyWire community** of scientists who proofread and annotated the connectome
 
 ## Future Work
 
