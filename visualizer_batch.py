@@ -234,7 +234,7 @@ ax5 = plt.subplot(3, 3, 5)  # Position
 ax6 = plt.subplot(3, 3, 6)  # Altitude
 ax7 = plt.subplot(3, 3, 7)  # Spikes PR
 ax8 = plt.subplot(3, 3, 8)  # Spikes Motion
-ax9 = plt.subplot(3, 3, (9,))  # 3D trajectory
+ax9 = plt.subplot(3, 3, 9)  # 3D trajectory
 
 # Helper to update all plots
 def update_frame(frame, data, env_obstacles):
