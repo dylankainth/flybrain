@@ -1,4 +1,4 @@
-# ![](slopcoded.png) Fruit Fly Brain Flight Controller
+# <img src="slopcoded.png" width="32" height="32"> Fruit Fly Brain Flight Controller
 
 ![Fruit Fly Brain on DJI Drone](Gemini_Generated_Image_ir7u4wir7u4wir7u.png)
 
