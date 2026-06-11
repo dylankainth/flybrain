@@ -4,9 +4,9 @@
 
 ## OBJECTIVE
 
-**Run *Drosophila melanogaster* from the FlyWire connectome (Dorkenwald et al., Schlegel et al., 2024) on a DJI Mini 4 Pro.**
+**Run *Drosophila melanogaster* from the FlyWire connectome (Dorkenwald et al., Schlegel et al., 2024) on a DJI Tello.**
 
-This project implements a real fruit fly brain on a real drone. We extract the complete neural wiring diagram of *Drosophila melanogaster* (139,255 neurons, evolved over 100 million years) from the FlyWire connectome, apply published biophysical parameters from Shiu et al. (Nature 2024), and deploy the resulting neural circuit as a flight controller on a DJI Mini 4 Pro quadcopter. The goal is to let evolution's solution to flight control work directly on modern hardware—no training, no simplification, just biology.
+This project implements a real fruit fly brain on a real drone. We extract the complete neural wiring diagram of *Drosophila melanogaster* (139,255 neurons, evolved over 100 million years) from the FlyWire connectome, apply published biophysical parameters from Shiu et al. (Nature 2024), and deploy the resulting neural circuit as a flight controller on a DJI Tello quadcopter. The goal is to let evolution's solution to flight control work directly on modern hardware—no training, no simplification, just biology.
 
 ## Overview
 
