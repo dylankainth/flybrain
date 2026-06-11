@@ -1,4 +1,4 @@
-<img src="slopcoded.png" width="100"> 
+<img src="slopcoded.png" width="500"> 
 
 # Fruit Fly Brain Flight Controller
 
