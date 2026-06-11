@@ -1,5 +1,7 @@
 # Fruit Fly Brain Flight Controller
 
+![Fruit Fly Brain on DJI Drone](Gemini_Generated_Image_ir7u4wir7u4wir7u.png)
+
 ## OBJECTIVE
 
 **Run *Drosophila melanogaster* from the FlyWire connectome (Dorkenwald et al., Schlegel et al., 2024) on a DJI Mini 4 Pro.**
