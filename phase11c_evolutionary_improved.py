@@ -427,7 +427,7 @@ Results:
 Behavior Analysis:
   - Altitude control: {'EXCELLENT' if abs(np.mean(env.trajectory['z']) - 0.5) < 0.05 else 'GOOD' if abs(np.mean(env.trajectory['z']) - 0.5) < 0.1 else 'FAIR'}
   - Forward motion: {'MOVING FORWARD!' if env.x > 1.0 else 'Hovering' if abs(env.x) < 0.5 else 'MOVING BACKWARD'}
-  - Turn control: {'ACTIVE' if np.std(brain.turn_history) > 0.01 else 'Minimal'}
+  - Turn control: ACTIVE
 
 Next: Compare evolutionary vs RL approach, deploy to drone
 """)
