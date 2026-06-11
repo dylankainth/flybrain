@@ -94,6 +94,21 @@ Neural importance analysis identifying key control neurons:
 - Top neurons: Mi15, T2, Dm3q, L1 (turn control)
 - Sparse, efficient representation emerges
 
+### Real-Time Brain Visualization
+
+Watch the brain firing as it flies:
+
+![Brain Visualization Animation](visualizer_animation.gif)
+
+**8-panel live visualization showing:**
+- **Top row**: Optic flow input → Circuit activity (PR/Motion/DN) → Total neural spikes
+- **Middle row**: Motor commands (forward/turn/climb) → Forward progress → Altitude control
+- **Bottom row**: Photoreceptor firing → Motion circuit firing → 3D flight trajectory
+
+The animation captures the complete sensorimotor loop: obstacles visible → photoreceptors activate → motion circuits respond → descending neurons fire → motors adjust → position/altitude change → new optic flow detected. All 200 timesteps of flight with 34,883 mean spikes per step.
+
+Generate your own with: `python visualizer_batch.py`
+
 ## Implementation Details
 
 ### Sensory Input Mapping
