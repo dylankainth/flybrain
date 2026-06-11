@@ -160,6 +160,25 @@ Motor control emerges from population activity of thousands of DNs, not from ind
 - Graceful degradation
 - Natural fault tolerance
 
+## Setup
+
+### Required Data Files
+
+The connectome data files are stored separately to keep the repository lightweight. Download them using the provided script:
+
+```bash
+python download_data.py
+```
+
+This downloads:
+- `fafb_v783_princeton_synapse_table.csv.gz` - Synaptic connections (139,255 neurons, ~802k synapses)
+- `consolidated_cell_types.csv.gz` - Neuron type classifications
+- `neurons.csv.gz` - Neuron metadata
+
+**Alternative: Manual Download**
+
+Visit [FlyWire connectome portal](https://flywire.ai/) and download FAFB v783 data, then place in repo root.
+
 ## Usage
 
 ### Run the Flight Simulator
@@ -172,15 +191,16 @@ Generates:
 - `phase11c_evolutionary_improved.png` - flight trajectory and neural activity visualization
 - Console output with flight metrics
 
-### Use the Trained Controller
+### Use the Brain Controller
 
 ```python
 import pickle
 import numpy as np
 
-# Load the brain
-with open('brain_drone_controller.pkl', 'rb') as f:
-    brain = pickle.load(f)
+# Create and run the brain
+from phase11c_evolutionary_improved import ImprovedEvolutionaryBrain
+
+brain = ImprovedEvolutionaryBrain()
 
 # Run one timestep
 optic_flow = np.array([forward, left, right, vertical], dtype=np.float32)
@@ -190,11 +210,13 @@ motor_commands = brain.compute(optic_flow)
 
 ### Deploy to Drone
 
-The packaged controller (`brain_drone_controller.pkl`) is ready for:
+The brain controller is ready for integration with:
 - **ArduPilot**: Serial/USB connection to Pixhawk
 - **ROS**: Integration with Gazebo simulator
 - **X-Plane**: Flight simulator hardware-in-the-loop
 - **Custom hardware**: Serial protocol for custom motor boards
+
+See `drone_brain_controller.py` for hardware integration module.
 
 ## Files
 
@@ -209,9 +231,10 @@ The packaged controller (`brain_drone_controller.pkl`) is ready for:
 - `phase8_validation_new_task.py` - Generalization testing
 - `phase7_harder_task_rl.py` - RL training code
 
-**Data:**
-- `fly_neurons_real.csv` - 139,255 neuron types and metadata
-- `fly_synapses_real.csv` - 80M synapses (sampled 1:100 for memory)
+**Data (Downloaded separately via `download_data.py`):**
+- `consolidated_cell_types.csv.gz` - Neuron types and classifications
+- `fafb_v783_princeton_synapse_table.csv.gz` - Synaptic connectivity
+- `neurons.csv.gz` - Neuron metadata and coordinates
 
 ## Research Questions Answered
 
