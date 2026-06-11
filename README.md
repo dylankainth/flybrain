@@ -1,8 +1,16 @@
 # Fruit Fly Brain Flight Controller
 
-A complete implementation of a Drosophila (fruit fly) flight controller using the real FlyWire connectome (139,255 neurons, ~800,000 synapses) with biologically-grounded spiking neural dynamics.
+## OBJECTIVE
+
+**Run *Drosophila melanogaster* from the FlyWire connectome (Xu et al., Nature 2024) on a DJI Mini 4 Pro.**
+
+This project implements a real fruit fly brain on a real drone. We extract the complete neural wiring diagram of *Drosophila melanogaster* (139,255 neurons, evolved over 100 million years), apply published biophysical parameters from Shiu et al. (Nature 2024), and deploy the resulting neural circuit as a flight controller on a DJI Mini 4 Pro quadcopter. The goal is to let evolution's solution to flight control work directly on modern hardware—no training, no simplification, just biology.
 
 ## Overview
+
+A complete implementation of a Drosophila (fruit fly) flight controller using the real FlyWire connectome (139,255 neurons, ~800,000 synapses) with biologically-grounded spiking neural dynamics.
+
+This project demonstrates that real neural circuit behavior can emerge from connectome structure + biophysics, without requiring trained weights or learning. We built a working flight controller using the actual fruit fly brain's wiring diagram.
 
 This project demonstrates that real neural circuit behavior can emerge from connectome structure + biophysics, without requiring trained weights or learning. We built a working flight controller using the actual fruit fly brain's wiring diagram.
 
