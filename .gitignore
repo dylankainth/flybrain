@@ -6,7 +6,6 @@ __pycache__/
 *.csv.gz
 *.pkl
 *.gz
-*.png
 .DS_Store
 .vscode/
 .idea/
