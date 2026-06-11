@@ -3,6 +3,9 @@ __pycache__/
 *.pyc
 *.pyo
 *.csv
+*.csv.gz
+*.pkl
+*.gz
 *.png
 .DS_Store
 .vscode/
