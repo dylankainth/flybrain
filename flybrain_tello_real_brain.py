@@ -30,6 +30,7 @@ matplotlib.use('TkAgg')  # Use TkAgg backend for threading compatibility
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from collections import deque
+from tqdm import tqdm
 
 # Global variables
 drone = None
@@ -37,6 +38,8 @@ emergency_stop = False
 safe_landing = False
 running = True
 brain = None
+prev_gray_loom = None  # for looming detector
+_looming_frames = 0   # consecutive high-looming frames (collision reflex counter)
 
 # Live plotting data buffers
 plot_data = {
@@ -100,36 +103,48 @@ print(f"\n[LOADING] Synaptic connectivity (stride={SYNAPSE_STRIDE})...", flush=T
 root_id_to_idx = {rid: idx for idx, rid in enumerate(neurons_df['root_id'].values)}
 is_inhibitory_np = neurons_df['nt_type'].isin(['GABA']).values
 
+_SYNAPSE_FILE = 'fly_synapses_real.csv'
+_TOTAL_SYNAPSES = 84_787_860  # full FlyWire connectome row count (approx)
+_pbar_total = (_TOTAL_SYNAPSES + SYNAPSE_STRIDE - 1) // SYNAPSE_STRIDE
+
 pre_list, post_list, size_list = [], [], []
-for chunk in pd.read_csv('fly_synapses_real.csv',
-                         usecols=['pre_root_id', 'post_root_id', 'size'],
-                         chunksize=4_000_000, low_memory=False):
-    if SYNAPSE_STRIDE > 1:
-        chunk = chunk.iloc[::SYNAPSE_STRIDE]
-    pre = chunk['pre_root_id'].map(root_id_to_idx).fillna(-1).to_numpy(dtype=np.int64)
-    post = chunk['post_root_id'].map(root_id_to_idx).fillna(-1).to_numpy(dtype=np.int64)
-    valid = (pre >= 0) & (post >= 0)
-    pre_list.append(pre[valid].astype(np.int32))
-    post_list.append(post[valid].astype(np.int32))
-    size_list.append(chunk['size'].to_numpy(dtype=np.float32)[valid])
+with tqdm(total=_pbar_total, unit='syn', unit_scale=True,
+          desc='  Synapses', dynamic_ncols=True, colour='cyan') as pbar:
+    for chunk in pd.read_csv(_SYNAPSE_FILE,
+                             usecols=['pre_root_id', 'post_root_id', 'size'],
+                             chunksize=4_000_000, low_memory=False):
+        if SYNAPSE_STRIDE > 1:
+            chunk = chunk.iloc[::SYNAPSE_STRIDE]
+        pre = chunk['pre_root_id'].map(root_id_to_idx).fillna(-1).to_numpy(dtype=np.int64)
+        post = chunk['post_root_id'].map(root_id_to_idx).fillna(-1).to_numpy(dtype=np.int64)
+        valid = (pre >= 0) & (post >= 0)
+        pre_list.append(pre[valid].astype(np.int32))
+        post_list.append(post[valid].astype(np.int32))
+        size_list.append(chunk['size'].to_numpy(dtype=np.float32)[valid])
+        pbar.update(len(chunk))
 
 pre_idx = np.concatenate(pre_list)
 post_idx = np.concatenate(post_list)
 sizes = np.concatenate(size_list)
 del pre_list, post_list, size_list
 
+print(f"  Synapses: {len(pre_idx):,}")
+
 # Normalize weights, then apply Dale's law: presynaptic inhibitory (GABA)
 # neurons get a negative sign so inhibition actually inhibits. (Previously
 # inhibitory input was added then subtracted, netting exactly zero effect.)
+print("[LOADING] Building weight tensors...", flush=True)
 weights = np.clip(sizes / (sizes.max() + 1e-6), 0.1, 2.0).astype(np.float32)
 weights *= np.where(is_inhibitory_np[pre_idx], -1.0, 1.0).astype(np.float32)
 
+print(f"[LOADING] Moving connectivity to {device}...", flush=True)
 indices = torch.from_numpy(np.stack([pre_idx, post_idx])).long().to(device)
 values = torch.from_numpy(weights).to(device)
-connectivity = torch.sparse_coo_tensor(indices, values, (n_neurons, n_neurons),
-                                       device=device).coalesce()
-
-print(f"  Synapses: {len(pre_idx):,}")
+with tqdm(total=1, desc='  GPU sparse tensor', unit='tensor',
+          dynamic_ncols=True, colour='cyan') as pbar:
+    connectivity = torch.sparse_coo_tensor(indices, values, (n_neurons, n_neurons),
+                                           device=device).coalesce()
+    pbar.update(1)
 
 # ============================================================================
 # REAL FLY BRAIN CONTROLLER
@@ -230,7 +245,7 @@ class RealFlyBrain:
 
         return self._run_and_decode(i_input)
 
-    def compute_retinotopic(self, pr_current, cell_idx):
+    def compute_retinotopic(self, pr_current, cell_idx, looming=0.0):
         """
         Drive R1-6 photoreceptors directly with per-cell luminance current from
         the retinotopic eye map (flybrain_eye_map.EyeMap) instead of optic-flow
@@ -240,6 +255,8 @@ class RealFlyBrain:
         Args:
             pr_current: np.array of luminance (0-1) per assigned R1-6 cell
             cell_idx:   np.array of neuron indices aligned with pr_current
+            looming:    0-1 scalar looming intensity; injected into R7/R8 pool
+                        which feeds the LPLC2-like looming detection pathway
 
         Returns:
             (motor dict for Tello, neural_metrics dict)
@@ -248,6 +265,9 @@ class RealFlyBrain:
         cur = torch.from_numpy(np.asarray(pr_current, dtype=np.float32)).to(self.device)
         idx = torch.from_numpy(np.asarray(cell_idx)).long().to(self.device)
         i_input.index_add_(0, idx, cur * 8e-11)  # same scale as the flow path
+        # Option 2: inject looming into R7/R8 (feeds looming-sensitive pathway)
+        if looming > 0.0 and len(self.r78_idx) > 0:
+            i_input[self.r78_idx] += float(looming) * 1.5e-10
         return self._run_and_decode(i_input)
 
     def _run_and_decode(self, i_input):
@@ -451,6 +471,75 @@ def get_optic_flow_from_sensors():
     vertical = float(np.clip(bot_v / v_total * 2.0, 0.0, 1.0))
 
     return np.array([forward, left, right, vertical], dtype=np.float32)
+
+
+# ============================================================================
+# LOOMING DETECTION (Option 2) + COLLISION REFLEX (Option 4)
+# ============================================================================
+
+# Tuning knobs
+LOOMING_BRAKE_THRESHOLD = 0.35  # 0-1; flow divergence above this = obstacle incoming
+LOOMING_BRAKE_FRAMES    = 3     # consecutive frames required to trigger reflex
+LOOMING_SCALE           = 2.0   # amplify raw divergence signal before clipping
+
+def compute_looming(gray):
+    """
+    Estimate looming intensity (0-1) from a grayscale frame using optical flow
+    divergence weighted toward the image center.  High values mean something is
+    expanding fast in front of the drone.
+
+    Uses a downscaled copy so it costs < 1 ms on CPU.
+    """
+    global prev_gray_loom
+
+    small = cv2.resize(gray, (80, 60))
+
+    if prev_gray_loom is None:
+        prev_gray_loom = small
+        return 0.0
+
+    flow = cv2.calcOpticalFlowFarneback(prev_gray_loom, small, None,
+                                        0.5, 2, 8, 2, 5, 1.1, 0)
+    prev_gray_loom = small
+
+    h, w = flow.shape[:2]
+    cx, cy = w // 2, h // 2
+    y_grid, x_grid = np.mgrid[0:h, 0:w]
+    x_c = (x_grid - cx).astype(np.float32)
+    y_c = (y_grid - cy).astype(np.float32)
+    dist = np.hypot(x_c, y_c) + 1e-6
+
+    # Positive radial divergence = flow pointing away from center = expansion
+    radial = (flow[..., 0] * x_c + flow[..., 1] * y_c) / dist
+
+    # Weight toward center: objects approaching head-on expand from the middle
+    center_w = np.exp(-dist / (min(h, w) * 0.4))
+    looming = float(np.sum(radial * center_w) / np.sum(center_w))
+
+    return float(np.clip(looming * LOOMING_SCALE, 0.0, 1.0))
+
+
+def collision_reflex(commands, looming_intensity):
+    """
+    Option 4: hard override layer — runs *after* the brain decode.
+    If looming has been high for LOOMING_BRAKE_FRAMES consecutive frames,
+    kill forward thrust and command a gentle back-up regardless of what the
+    brain wanted to do.  Returns (commands, triggered_bool).
+    """
+    global _looming_frames
+
+    if looming_intensity >= LOOMING_BRAKE_THRESHOLD:
+        _looming_frames = min(_looming_frames + 1, LOOMING_BRAKE_FRAMES + 2)
+    else:
+        _looming_frames = max(_looming_frames - 1, 0)
+
+    if _looming_frames >= LOOMING_BRAKE_FRAMES:
+        commands['forward'] = -25           # gentle reverse
+        commands['yaw']     = commands['yaw']  # keep any turn to steer away
+        # don't touch vertical — let existing open-loop hold handle altitude
+        return commands, True
+
+    return commands, False
 
 
 # ============================================================================
@@ -666,15 +755,17 @@ def main():
             elapsed = current_time - start_time
             
             # Get sensory input + run neural computation (139,255 neurons)
+            looming_signal = 0.0
             if RETINOTOPIC:
                 gray = get_gray_frame()
                 if gray is None:
                     optic_flow = np.zeros(4, dtype=np.float32)
                     commands, neural_metrics = brain.compute(optic_flow)
                 else:
+                    looming_signal = compute_looming(gray)  # Option 2
                     intensity = eye_map.sample(gray)
                     commands, neural_metrics = brain.compute_retinotopic(
-                        intensity[omma_of_cell], cell_idx)
+                        intensity[omma_of_cell], cell_idx, looming=looming_signal)
                     # 4-vector summary for the telemetry plot only
                     optic_flow = np.array([
                         intensity[vis_mask].mean() if vis_mask.any() else 0.0,
@@ -696,6 +787,12 @@ def main():
 
             # Cap yaw so the noisy turn decode doesn't just spin it in place
             commands['yaw'] = int(np.clip(commands['yaw'], -YAW_LIMIT, YAW_LIMIT))
+
+            # --- Collision reflex (Option 4): hard brake overrides brain on looming ---
+            if RETINOTOPIC:
+                commands, reflex_active = collision_reflex(commands, looming_signal)
+                if reflex_active and iteration % 10 == 0:
+                    print(f"[REFLEX] Looming {looming_signal:.2f} — braking!", flush=True)
 
             # Update plot data
             with plot_lock:
