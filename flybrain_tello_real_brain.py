@@ -337,6 +337,8 @@ ALT_FLOOR_CM = 40        # don't sink below this
 ALT_KP = 0.6             # proportional gain (rc units per cm of error)
 ALT_NEURAL_GAIN = 0.3    # how much the brain may nudge vertical (0 = pure hold)
 ALT_LIMIT = 40           # max |vertical| rc command from the hold
+LAUNCH_RAMP_S = 3.0      # settle window: steady climb + ramp brain authority 0->1
+YAW_LIMIT = 40           # cap brain yaw (raw decode swings ~+/-70 = spins in place)
 
 # ============================================================================
 # KEYBOARD CONTROL
@@ -394,6 +396,27 @@ def get_gray_frame():
     if frame is None:
         return None
     return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+def read_altitude_cm():
+    """Best-effort altitude in cm, or None if no reliable reading.
+
+    Prefer the downward ToF (more reliable near the ground) then the barometer.
+    A 0 / out-of-range value means 'no reading' -- crucially NOT 'on the floor',
+    so the altitude hold must not treat it as a reason to climb.
+    """
+    try:
+        tof = drone.get_distance_tof()
+        if tof and 0 < tof < 500:
+            return int(tof)
+    except Exception:
+        pass
+    try:
+        h = drone.get_height()
+        if h and h > 0:
+            return int(h)
+    except Exception:
+        pass
+    return None
 
 def get_optic_flow_from_sensors():
     """
@@ -605,17 +628,47 @@ def main():
         
         print("\n[TAKEOFF] Launching...")
         print("-" * 60)
-        
-        # Takeoff
-        drone.takeoff()
+        try:
+            print(f"[STATE] battery={drone.get_battery()}%  "
+                  f"temp={drone.get_temperature()}C  "
+                  f"height={drone.get_height()}cm")
+        except Exception:
+            pass
+
+        # Takeoff -- if the Tello rejects it (low battery, not level, being held,
+        # IMU not ready) it raises. Surface that clearly instead of blindly
+        # killing motors via the outer handler.
+        try:
+            drone.takeoff()
+        except Exception as e:
+            print("\n" + "=" * 60)
+            print(f"[TAKEOFF FAILED] Drone rejected takeoff: {e}")
+            print("Common causes: battery too low for flight (recharge -- repeated")
+            print("test flights drain it fast), not on a flat/level surface, the")
+            print("drone is being held, or the IMU needs calibration.")
+            print("=" * 60)
+            try:
+                drone.land()
+            except Exception:
+                pass
+            return
         time.sleep(3)
-        
+
+        # Confirm it actually got airborne
+        try:
+            h0 = drone.get_height()
+            print(f"[OK] Airborne! height ~{h0} cm")
+            if h0 <= 0:
+                print("[WARN] Height reads 0 -- drone may not have left the ground.")
+        except Exception:
+            print("[OK] Airborne! (height read unavailable)")
+
         # Send immediate hover commands to prevent auto-land
-        print("[OK] Airborne! Sending hover commands...")
+        print("[OK] Sending hover commands...")
         for i in range(10):
             drone.send_rc_control(0, 0, 0, 0)
             time.sleep(0.05)
-        
+
         print("[OK] Hover stabilized!")
         print("\n[NEURAL CONTROL] 139,255 neurons now flying the drone")
         print("-" * 60)
@@ -653,18 +706,32 @@ def main():
                 optic_flow = get_optic_flow_from_sensors()
                 commands, neural_metrics = brain.compute(optic_flow)
 
-            # --- Altitude hold (closed-loop): keeps it off the ceiling ---
-            try:
-                height = drone.get_height()  # cm (barometer)
-            except Exception:
-                height = ALT_TARGET_CM
-            alt_cmd = ALT_KP * (ALT_TARGET_CM - height)        # hold toward target
-            alt_cmd += ALT_NEURAL_GAIN * commands['vertical']  # let the brain nudge
-            if height >= ALT_CEILING_CM:                       # hard ceiling
-                alt_cmd = min(alt_cmd, -25)
-            elif height <= ALT_FLOOR_CM:                       # hard floor
-                alt_cmd = max(alt_cmd, 10)
-            commands['vertical'] = int(np.clip(alt_cmd, -ALT_LIMIT, ALT_LIMIT))
+            # --- Vertical control + launch settling ---
+            height = read_altitude_cm()  # cm, or None if no reliable reading
+            if elapsed < LAUNCH_RAMP_S:
+                # Settle window: gentle steady climb to gain safe altitude and
+                # ramp the brain's (often violent) forward/yaw authority 0 -> 1,
+                # so it doesn't lurch and tip the instant it leaves the ground.
+                ramp = elapsed / LAUNCH_RAMP_S
+                commands['forward'] = int(commands['forward'] * ramp)
+                commands['yaw'] = int(commands['yaw'] * ramp)
+                commands['vertical'] = 25
+            else:
+                # Closed-loop altitude hold. If height is unknown (None), do NOT
+                # force a climb -- just let the brain nudge gently.
+                if height is None:
+                    alt_cmd = ALT_NEURAL_GAIN * commands['vertical']
+                else:
+                    alt_cmd = ALT_KP * (ALT_TARGET_CM - height)
+                    alt_cmd += ALT_NEURAL_GAIN * commands['vertical']
+                    if height >= ALT_CEILING_CM:               # hard ceiling
+                        alt_cmd = min(alt_cmd, -25)
+                    elif 0 < height <= ALT_FLOOR_CM:           # hard floor
+                        alt_cmd = max(alt_cmd, 10)
+                commands['vertical'] = int(np.clip(alt_cmd, -ALT_LIMIT, ALT_LIMIT))
+
+            # Cap yaw so the noisy turn decode doesn't just spin it in place
+            commands['yaw'] = int(np.clip(commands['yaw'], -YAW_LIMIT, YAW_LIMIT))
 
             # Update plot data
             with plot_lock:
@@ -733,7 +800,9 @@ def main():
                 pass
                 
     except Exception as e:
+        import traceback
         print(f"\n[ERROR] {e}")
+        traceback.print_exc()
         if drone:
             try:
                 drone.emergency()

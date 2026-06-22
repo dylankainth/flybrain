@@ -209,13 +209,22 @@ brain" claim is defensible:
    ommatidial viewing directions (Buchner 1971) map the camera to R1-6
    luminance, letting the connectome compute motion itself instead of having
    optic flow injected directly. See `docs/eye_map.md`.
-7. **Closed-loop altitude hold** — the neural `vertical` output is an open-loop
-   *velocity* command with a bias, so with no feedback the drone drifted into
-   the ceiling. The flight loop now reads the Tello's height sensor and holds a
-   target altitude (`ALT_TARGET_CM`, default 120 cm) with a proportional
-   controller, lets the brain nudge it at limited authority (`ALT_NEURAL_GAIN`),
-   and enforces a hard ceiling/floor. Forward and yaw remain fully brain-driven.
-   Tune the `ALT_*` constants near the top of `flybrain_tello_real_brain.py`.
+7. **Flight stabilization** (altitude hold + launch settle + yaw cap):
+   - **Altitude hold** — the neural `vertical` output is open-loop *velocity*
+     with a bias, so with no feedback the drone climbed into the ceiling. The
+     loop now reads the Tello altitude (ToF, falling back to barometer) and
+     holds `ALT_TARGET_CM` (default 120 cm) with a P-controller, letting the
+     brain nudge at limited authority and enforcing a hard ceiling/floor. A
+     **0/invalid reading is treated as "unknown" (no forced climb)** — a bad
+     `height=0` previously pinned the throttle to max climb.
+   - **Launch settle** (`LAUNCH_RAMP_S`) — for the first few seconds it does a
+     gentle steady climb and ramps the brain's forward/yaw authority 0→1, so it
+     doesn't lurch and tip the instant it leaves the ground.
+   - **Yaw cap** (`YAW_LIMIT`) — the raw turn decode swings ~±70 and would spin
+     the drone in place; capped to a sane range.
+
+   Forward stays fully brain-driven; tune the constants near the top of
+   `flybrain_tello_real_brain.py`.
 
 > **Caveat:** this dataset's `side`/`x,y,z` fields are empty, so a true
 > left/right hemisphere split is not possible — the L/R photoreceptor split is an
