@@ -1,8 +1,8 @@
-<img src="slopcoded.png" width="500"> 
+<img src="images/slopcoded.png" width="500"> 
 
 # Fruit Fly Brain Flight Controller
 
-![Fruit Fly Brain on DJI Drone](Gemini_Generated_Image_ir7u4wir7u4wir7u.png)
+![Fruit Fly Brain on DJI Drone](images/Gemini_Generated_Image_ir7u4wir7u4wir7u.png)
 
 ## OBJECTIVE
 
@@ -72,7 +72,7 @@ Leaky integrate-and-fire neurons with realistic parameters:
 
 Flight controller using connectome's native circuits with no training:
 
-![Phase 11C Flight Simulation](phase11c_evolutionary_improved.png)
+![Phase 11C Flight Simulation](images/phase11c_evolutionary_improved.png)
 
 **Metrics:**
 - Forward progress: 1.42 units
@@ -85,7 +85,7 @@ Flight controller using connectome's native circuits with no training:
 
 Reinforcement learning approach trained on harder task with dynamic obstacles:
 
-![Phase 7 RL Training Results](phase7_harder_task_results.png)
+![Phase 7 RL Training Results](images/phase7_harder_task_results.png)
 
 **Metrics:**
 - Mean spike rate: 602,063 neurons/timestep
@@ -98,7 +98,7 @@ Reinforcement learning approach trained on harder task with dynamic obstacles:
 
 Neural importance analysis identifying key control neurons:
 
-![Phase 10 Circuit Analysis](phase10_circuit_analysis.png)
+![Phase 10 Circuit Analysis](images/phase10_circuit_analysis.png)
 
 **Findings:**
 - Only 10% of neurons (13,926) have significant readout weights
@@ -110,7 +110,7 @@ Neural importance analysis identifying key control neurons:
 
 Watch the brain firing as it flies:
 
-![Brain Visualization Animation](visualizer_animation.gif)
+![Brain Visualization Animation](images/visualizer_animation.gif)
 
 **8-panel live visualization showing:**
 - **Top row**: Optic flow input → Circuit activity (PR/Motion/DN) → Total neural spikes
@@ -188,7 +188,7 @@ to the drone.
 
 ### Fidelity & real-time improvements
 
-Recent work (see `improvements.md`) hardened these scripts so the "running a fly
+Recent work (see `docs/improvements.md`) hardened these scripts so the "running a fly
 brain" claim is defensible:
 
 1. **Full connectome by default** — streams all ~80M synapses in bounded memory
@@ -281,17 +281,24 @@ See `drone_brain_controller.py` for hardware integration module.
 - `flybrain_tello_real_brain.py` - Full connectome + camera optic flow + live telemetry
 - `flybrain_tello_camera.py` - Full connectome + threaded camera vision
 - `flybrain_tello_deploy.py` - Lightweight rule-based demo (no connectome)
-- `improvements.md` - Fidelity & real-time improvement notes
 
 **Analysis:**
 - `phase10_circuit_analysis.py` - Neural importance analysis
 - `phase8_validation_new_task.py` - Generalization testing
 - `phase7_harder_task_rl.py` - RL training code
 
+**Repository layout:**
+- `docs/` - design notes, roadmaps, and progress write-ups (incl. `docs/improvements.md`)
+- `images/` - figures, plots, and animations referenced by the docs
+- `results/` - run artifacts (`full_brain_results.json`, simulation log)
+
 **Data (Downloaded separately via `download_data.py`):**
 - `consolidated_cell_types.csv.gz` - Neuron types and classifications
 - `fafb_v783_princeton_synapse_table.csv.gz` - Synaptic connectivity
 - `neurons.csv.gz` - Neuron metadata and coordinates
+
+> Large connectome CSVs are git-ignored (`*.csv`); they live only in your working
+> tree, not in the repo.
 
 ## Research Questions Answered
 
