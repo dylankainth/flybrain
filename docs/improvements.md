@@ -40,7 +40,22 @@ Applies to `flybrain_tello_real_brain.py` and `flybrain_tello_camera.py`
    step per control loop, so the brain ran ~20-50x slower than a real fly. Run
    N sub-steps per control cycle so simulated time tracks real time.
 
+## Tier A — real retinotopic eye map (sensory front-end)
+
+7. **Retinotopic camera→ommatidia→R1-6 mapping.** Replaces the optic-flow-into-
+   photoreceptors hack with real measured ommatidial viewing directions
+   (Buchner 1971, via `strawlab/drosophila_eye_map`, BSD). Each ommatidium
+   samples the camera direction it actually looks at and feeds R1-6 luminance;
+   motion is then computed downstream by the connectome. Opt-in via
+   `FLYBRAIN_RETINOTOPIC=1`. Full write-up in [eye_map.md](eye_map.md);
+   module `flybrain_eye_map.py`, data in `eye_map/`.
+
+   Honest limits: a single forward Tello camera only covers a frontal ~66°×50°
+   cone (≈186/1398 ommatidia), and the cell↔ommatidium identity is retinotopic-
+   order (real geometry, modelled cell assignment — the FlyWire column join
+   isn't in the local data).
+
 ## Safety note
 
-These scripts command a real drone. Motor-decoding / mapping changes (#3) must
-be bench-tested with props off before any flight.
+These scripts command a real drone. Motor-decoding / mapping changes (#3) and the
+retinotopic front-end (#7) must be bench-tested with props off before any flight.

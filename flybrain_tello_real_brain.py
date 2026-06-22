@@ -228,6 +228,30 @@ class RealFlyBrain:
         i_input[self.r16_right_idx] += optic_flow_t[2] * 1.2e-10 # Right motion
         i_input[self.r78_idx] += optic_flow_t[3] * 1e-10         # Vertical
 
+        return self._run_and_decode(i_input)
+
+    def compute_retinotopic(self, pr_current, cell_idx):
+        """
+        Drive R1-6 photoreceptors directly with per-cell luminance current from
+        the retinotopic eye map (flybrain_eye_map.EyeMap) instead of optic-flow
+        scalars. Motion (T4/T5) is then computed downstream by the connectome
+        itself -- the biologically correct direction of information flow.
+
+        Args:
+            pr_current: np.array of luminance (0-1) per assigned R1-6 cell
+            cell_idx:   np.array of neuron indices aligned with pr_current
+
+        Returns:
+            (motor dict for Tello, neural_metrics dict)
+        """
+        i_input = torch.zeros(self.n_neurons, dtype=torch.float32, device=self.device)
+        cur = torch.from_numpy(np.asarray(pr_current, dtype=np.float32)).to(self.device)
+        idx = torch.from_numpy(np.asarray(cell_idx)).long().to(self.device)
+        i_input.index_add_(0, idx, cur * 8e-11)  # same scale as the flow path
+        return self._run_and_decode(i_input)
+
+    def _run_and_decode(self, i_input):
+        """Run `substeps` LIF steps with a fixed input current and decode motors."""
         # Run sub-steps; accumulate spikes over the window
         spike_accum = torch.zeros(self.n_neurons, dtype=torch.float32, device=self.device)
         for _ in range(self.substeps):
@@ -280,6 +304,27 @@ print("\n[INIT] Building real fly brain controller...", flush=True)
 brain = RealFlyBrain(connectivity, neurons_df, pr_indices, dn_indices, motion_indices, n_neurons, device)
 print("[OK] Brain ready!\n")
 
+# ----------------------------------------------------------------------------
+# Optional retinotopic eye-map front-end (EXPERIMENTAL; bench-test props-off).
+# FLYBRAIN_RETINOTOPIC=1 feeds per-ommatidium luminance (real Buchner-1971 eye
+# geometry) into R1-6 instead of optic-flow scalars; motion is then computed by
+# the connectome itself. See flybrain_eye_map.py and docs/eye_map.md.
+# ----------------------------------------------------------------------------
+RETINOTOPIC = os.environ.get('FLYBRAIN_RETINOTOPIC', '0') == '1'
+eye_map = cell_idx = omma_of_cell = None
+vis_mask = vis_left = vis_right = vis_upper = None
+if RETINOTOPIC:
+    from flybrain_eye_map import EyeMap
+    eye_map = EyeMap()
+    cell_idx, omma_of_cell = eye_map.assign_photoreceptors(
+        brain.r16_left_idx.cpu().numpy(), brain.r16_right_idx.cpu().numpy())
+    vis_mask = eye_map.visible_mask()
+    vis_left = vis_mask & eye_map.left_mask
+    vis_right = vis_mask & eye_map.right_mask
+    vis_upper = vis_mask & (eye_map.elevation > 0)
+    print(f"[RETINOTOPIC] {eye_map.n} ommatidia, {vis_mask.sum()} in camera FOV; "
+          f"{len(cell_idx)} R1-6 cells assigned")
+
 # ============================================================================
 # KEYBOARD CONTROL
 # ============================================================================
@@ -329,6 +374,13 @@ def setup_keyboard_listener():
 
 
 prev_gray = None
+
+def get_gray_frame():
+    """Grab the current Tello camera frame as grayscale (or None)."""
+    frame = drone.get_frame_read().frame
+    if frame is None:
+        return None
+    return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
 def get_optic_flow_from_sensors():
     """
@@ -567,11 +619,26 @@ def main():
             current_time = time.time()
             elapsed = current_time - start_time
             
-            # Get sensory input
-            optic_flow = get_optic_flow_from_sensors()
-            
-            # Neural computation (139,255 neurons)
-            commands, neural_metrics = brain.compute(optic_flow)
+            # Get sensory input + run neural computation (139,255 neurons)
+            if RETINOTOPIC:
+                gray = get_gray_frame()
+                if gray is None:
+                    optic_flow = np.zeros(4, dtype=np.float32)
+                    commands, neural_metrics = brain.compute(optic_flow)
+                else:
+                    intensity = eye_map.sample(gray)
+                    commands, neural_metrics = brain.compute_retinotopic(
+                        intensity[omma_of_cell], cell_idx)
+                    # 4-vector summary for the telemetry plot only
+                    optic_flow = np.array([
+                        intensity[vis_mask].mean() if vis_mask.any() else 0.0,
+                        intensity[vis_left].mean() if vis_left.any() else 0.0,
+                        intensity[vis_right].mean() if vis_right.any() else 0.0,
+                        intensity[vis_upper].mean() if vis_upper.any() else 0.0,
+                    ], dtype=np.float32)
+            else:
+                optic_flow = get_optic_flow_from_sensors()
+                commands, neural_metrics = brain.compute(optic_flow)
             
             # Update plot data
             with plot_lock:

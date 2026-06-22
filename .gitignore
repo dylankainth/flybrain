@@ -4,6 +4,8 @@ __pycache__/
 *.pyo
 *.csv
 *.csv.gz
+# but DO track the small vendored eye-map data (real Buchner-1971 geometry)
+!eye_map/*.csv
 *.pkl
 *.gz
 .DS_Store

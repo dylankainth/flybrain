@@ -205,6 +205,10 @@ brain" claim is defensible:
 5. **Sub-stepped simulation** (`substeps=20`) so simulated time tracks the
    control loop; motor decoding uses mean per-step firing rate so scaling is
    independent of the substep count.
+6. **Retinotopic eye map** (opt-in, `FLYBRAIN_RETINOTOPIC=1`) — real measured
+   ommatidial viewing directions (Buchner 1971) map the camera to R1-6
+   luminance, letting the connectome compute motion itself instead of having
+   optic flow injected directly. See `docs/eye_map.md`.
 
 > **Caveat:** this dataset's `side`/`x,y,z` fields are empty, so a true
 > left/right hemisphere split is not possible — the L/R photoreceptor split is an
@@ -288,6 +292,7 @@ See `drone_brain_controller.py` for hardware integration module.
 - `phase7_harder_task_rl.py` - RL training code
 
 **Repository layout:**
+- `flybrain_eye_map.py` + `eye_map/` - retinotopic eye map (real Buchner-1971 ommatidial directions); see `docs/eye_map.md`
 - `docs/` - design notes, roadmaps, and progress write-ups (incl. `docs/improvements.md`)
 - `images/` - figures, plots, and animations referenced by the docs
 - `results/` - run artifacts (`full_brain_results.json`, simulation log)
