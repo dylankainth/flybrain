@@ -55,6 +55,16 @@ Applies to `flybrain_tello_real_brain.py` and `flybrain_tello_camera.py`
    order (real geometry, modelled cell assignment — the FlyWire column join
    isn't in the local data).
 
+## Tier B — flight stability
+
+8. **Closed-loop altitude hold.** The neural `vertical` channel is an open-loop
+   velocity command with a bias; with no altitude feedback the drone drifted
+   into the ceiling. The flight loop now reads the Tello height sensor and holds
+   a target altitude (`ALT_TARGET_CM`) with a P-controller, allows limited
+   neural modulation (`ALT_NEURAL_GAIN`), and enforces a hard ceiling/floor.
+   Forward and yaw stay brain-driven. Constants are at the top of
+   `flybrain_tello_real_brain.py`.
+
 ## Safety note
 
 These scripts command a real drone. Motor-decoding / mapping changes (#3) and the

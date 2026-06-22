@@ -209,6 +209,13 @@ brain" claim is defensible:
    ommatidial viewing directions (Buchner 1971) map the camera to R1-6
    luminance, letting the connectome compute motion itself instead of having
    optic flow injected directly. See `docs/eye_map.md`.
+7. **Closed-loop altitude hold** — the neural `vertical` output is an open-loop
+   *velocity* command with a bias, so with no feedback the drone drifted into
+   the ceiling. The flight loop now reads the Tello's height sensor and holds a
+   target altitude (`ALT_TARGET_CM`, default 120 cm) with a proportional
+   controller, lets the brain nudge it at limited authority (`ALT_NEURAL_GAIN`),
+   and enforces a hard ceiling/floor. Forward and yaw remain fully brain-driven.
+   Tune the `ALT_*` constants near the top of `flybrain_tello_real_brain.py`.
 
 > **Caveat:** this dataset's `side`/`x,y,z` fields are empty, so a true
 > left/right hemisphere split is not possible — the L/R photoreceptor split is an

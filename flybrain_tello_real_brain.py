@@ -325,6 +325,19 @@ if RETINOTOPIC:
     print(f"[RETINOTOPIC] {eye_map.n} ommatidia, {vis_mask.sum()} in camera FOV; "
           f"{len(cell_idx)} R1-6 cells assigned")
 
+# ----------------------------------------------------------------------------
+# Altitude hold. The neural 'vertical' channel is an open-loop *velocity*
+# command with a bias, so with no feedback it drifts into the ceiling. We
+# close the loop on the Tello's height sensor: hold a target altitude, let the
+# brain only modulate it modestly, and hard-cap at a ceiling. All in cm.
+# ----------------------------------------------------------------------------
+ALT_TARGET_CM = 120      # altitude to hold
+ALT_CEILING_CM = 180     # hard cap: force descent above this
+ALT_FLOOR_CM = 40        # don't sink below this
+ALT_KP = 0.6             # proportional gain (rc units per cm of error)
+ALT_NEURAL_GAIN = 0.3    # how much the brain may nudge vertical (0 = pure hold)
+ALT_LIMIT = 40           # max |vertical| rc command from the hold
+
 # ============================================================================
 # KEYBOARD CONTROL
 # ============================================================================
@@ -639,7 +652,20 @@ def main():
             else:
                 optic_flow = get_optic_flow_from_sensors()
                 commands, neural_metrics = brain.compute(optic_flow)
-            
+
+            # --- Altitude hold (closed-loop): keeps it off the ceiling ---
+            try:
+                height = drone.get_height()  # cm (barometer)
+            except Exception:
+                height = ALT_TARGET_CM
+            alt_cmd = ALT_KP * (ALT_TARGET_CM - height)        # hold toward target
+            alt_cmd += ALT_NEURAL_GAIN * commands['vertical']  # let the brain nudge
+            if height >= ALT_CEILING_CM:                       # hard ceiling
+                alt_cmd = min(alt_cmd, -25)
+            elif height <= ALT_FLOOR_CM:                       # hard floor
+                alt_cmd = max(alt_cmd, 10)
+            commands['vertical'] = int(np.clip(alt_cmd, -ALT_LIMIT, ALT_LIMIT))
+
             # Update plot data
             with plot_lock:
                 plot_data['time'].append(elapsed)
