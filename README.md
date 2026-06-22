@@ -172,6 +172,45 @@ Motor control emerges from population activity of thousands of DNs, not from ind
 - Graceful degradation
 - Natural fault tolerance
 
+## Real Connectome Deployment (DJI Tello)
+
+The `flybrain_tello_*.py` scripts run the spiking connectome on your PC and
+stream control/camera to/from a real Tello: the drone's camera feed is turned
+into optic flow, injected into the photoreceptors, the network is simulated in
+real time, and descending-neuron activity is decoded into RC commands sent back
+to the drone.
+
+- `flybrain_tello_real_brain.py` — full connectome + camera optic flow + live telemetry plots
+- `flybrain_tello_camera.py` — full connectome + threaded camera vision
+- `flybrain_tello_deploy.py` — lightweight rule-based demo (no connectome / GPU)
+
+**Controls:** `SPACEBAR` = emergency motor kill · `ESC` = safe landing.
+
+### Fidelity & real-time improvements
+
+Recent work (see `improvements.md`) hardened these scripts so the "running a fly
+brain" claim is defensible:
+
+1. **Full connectome by default** — streams all ~80M synapses in bounded memory
+   (was every 100th synapse ≈ 1% of the wiring). Set
+   `FLYBRAIN_SYNAPSE_STRIDE=N` as a hardware fallback (1 = full).
+2. **Working inhibition (Dale's law)** — neurotransmitter sign is baked into the
+   synapse weights. Previously inhibitory (GABA) neurons were added then
+   subtracted, netting *exactly zero* effect; now inhibition actually inhibits.
+3. **Exact cell-type selection** — photoreceptors = `R1-6`/`R7`/`R8` (11,151),
+   descending = type starts with `DN` (1,336). The old substring regex
+   misclassified cells (`ER3d`/`FR1` as photoreceptors, `s-CPDN3A` as DN).
+4. **Vectorized sensory injection** + **precomputed connectivity transpose** for
+   real-time performance.
+5. **Sub-stepped simulation** (`substeps=20`) so simulated time tracks the
+   control loop; motor decoding uses mean per-step firing rate so scaling is
+   independent of the substep count.
+
+> **Caveat:** this dataset's `side`/`x,y,z` fields are empty, so a true
+> left/right hemisphere split is not possible — the L/R photoreceptor split is an
+> explicit, documented arbitrary proxy. Motor-output changes mean you should
+> **bench-test with props off** before any flight.
+
 ## Setup
 
 ### Required Data Files
@@ -238,6 +277,12 @@ See `drone_brain_controller.py` for hardware integration module.
 - `drone_brain_controller.py` - Hardware integration module
 - `brain_drone_controller.pkl` - Packaged controller (ready to deploy)
 
+**Tello Deployment (real connectome on a real drone):**
+- `flybrain_tello_real_brain.py` - Full connectome + camera optic flow + live telemetry
+- `flybrain_tello_camera.py` - Full connectome + threaded camera vision
+- `flybrain_tello_deploy.py` - Lightweight rule-based demo (no connectome)
+- `improvements.md` - Fidelity & real-time improvement notes
+
 **Analysis:**
 - `phase10_circuit_analysis.py` - Neural importance analysis
 - `phase8_validation_new_task.py` - Generalization testing
@@ -261,7 +306,7 @@ See `drone_brain_controller.py` for hardware integration module.
 | Aspect | Real Fly | Our Model |
 |--------|----------|-----------|
 | Neurons | 139,255 | 139,255 ✓ |
-| Synapses | 50M+ | 802k (sampled 1:100) |
+| Synapses | 50M+ | ~80M full connectome ✓ (Tello scripts; `FLYBRAIN_SYNAPSE_STRIDE` to subsample) |
 | Cell types | 4,000+ | Fully identified ✓ |
 | Biophysics | Complex | LIF simplified |
 | Learning | STDP, dopamine | Static connectivity |
@@ -305,7 +350,7 @@ This project would not be possible without:
 ## Future Work
 
 1. **Real hardware deployment** - Connect to ArduPilot drone
-2. **Full connectome** - Use all 80M synapses (currently 1:100 sampled)
+2. ~~**Full connectome** - Use all 80M synapses~~ ✓ Done (Tello scripts now load the full connectome by default)
 3. **Plasticity** - Add dopamine-modulated STDP for adaptation
 4. **Closed-loop control** - Real camera feeds + motor feedback
 5. **Behavioral repertoire** - Landing, takeoff, evasion maneuvers
