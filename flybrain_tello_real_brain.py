@@ -326,19 +326,20 @@ if RETINOTOPIC:
           f"{len(cell_idx)} R1-6 cells assigned")
 
 # ----------------------------------------------------------------------------
-# Altitude hold. The neural 'vertical' channel is an open-loop *velocity*
-# command with a bias, so with no feedback it drifts into the ceiling. We
-# close the loop on the Tello's height sensor: hold a target altitude, let the
-# brain only modulate it modestly, and hard-cap at a ceiling. All in cm.
+# Vertical control (OPEN-LOOP). Closed-loop altitude hold needs a height sensor,
+# but this Tello reports height=0 / unreliable values (see the state-decode
+# warnings at connect), which made the P-controller saturate and pin the
+# throttle to max climb. Instead: a brief climb to clear the ground, then damp
+# the brain's vertical toward ~zero-mean and let the Tello's *built-in*
+# barometric hover hold altitude (it does that automatically when rc vert ~ 0).
+# This keeps the brain's dynamic forward/yaw movement while taming the climb.
 # ----------------------------------------------------------------------------
-ALT_TARGET_CM = 120      # altitude to hold
-ALT_CEILING_CM = 180     # hard cap: force descent above this
-ALT_FLOOR_CM = 40        # don't sink below this
-ALT_KP = 0.6             # proportional gain (rc units per cm of error)
-ALT_NEURAL_GAIN = 0.3    # how much the brain may nudge vertical (0 = pure hold)
-ALT_LIMIT = 40           # max |vertical| rc command from the hold
-LAUNCH_RAMP_S = 3.0      # settle window: steady climb + ramp brain authority 0->1
-YAW_LIMIT = 40           # cap brain yaw (raw decode swings ~+/-70 = spins in place)
+LAUNCH_CLIMB_S = 2.0     # brief gentle climb after takeoff to clear the ground
+LAUNCH_CLIMB_CMD = 25    # rc vertical during that climb
+VERT_GAIN = 0.3          # fraction of the brain's vertical to keep
+VERT_TRIM = 8            # subtract the brain's upward bias (prevents slow climb)
+VERT_LIMIT = 25          # cap |vertical| so it can't bolt to the ceiling
+YAW_LIMIT = 50           # cap brain yaw (raw decode swings ~+/-70 = spins in place)
 
 # ============================================================================
 # KEYBOARD CONTROL
@@ -396,27 +397,6 @@ def get_gray_frame():
     if frame is None:
         return None
     return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-def read_altitude_cm():
-    """Best-effort altitude in cm, or None if no reliable reading.
-
-    Prefer the downward ToF (more reliable near the ground) then the barometer.
-    A 0 / out-of-range value means 'no reading' -- crucially NOT 'on the floor',
-    so the altitude hold must not treat it as a reason to climb.
-    """
-    try:
-        tof = drone.get_distance_tof()
-        if tof and 0 < tof < 500:
-            return int(tof)
-    except Exception:
-        pass
-    try:
-        h = drone.get_height()
-        if h and h > 0:
-            return int(h)
-    except Exception:
-        pass
-    return None
 
 def get_optic_flow_from_sensors():
     """
@@ -706,29 +686,13 @@ def main():
                 optic_flow = get_optic_flow_from_sensors()
                 commands, neural_metrics = brain.compute(optic_flow)
 
-            # --- Vertical control + launch settling ---
-            height = read_altitude_cm()  # cm, or None if no reliable reading
-            if elapsed < LAUNCH_RAMP_S:
-                # Settle window: gentle steady climb to gain safe altitude and
-                # ramp the brain's (often violent) forward/yaw authority 0 -> 1,
-                # so it doesn't lurch and tip the instant it leaves the ground.
-                ramp = elapsed / LAUNCH_RAMP_S
-                commands['forward'] = int(commands['forward'] * ramp)
-                commands['yaw'] = int(commands['yaw'] * ramp)
-                commands['vertical'] = 25
+            # --- Vertical control (open-loop; no usable height sensor) ---
+            if elapsed < LAUNCH_CLIMB_S:
+                commands['vertical'] = LAUNCH_CLIMB_CMD   # brief climb to clear ground
             else:
-                # Closed-loop altitude hold. If height is unknown (None), do NOT
-                # force a climb -- just let the brain nudge gently.
-                if height is None:
-                    alt_cmd = ALT_NEURAL_GAIN * commands['vertical']
-                else:
-                    alt_cmd = ALT_KP * (ALT_TARGET_CM - height)
-                    alt_cmd += ALT_NEURAL_GAIN * commands['vertical']
-                    if height >= ALT_CEILING_CM:               # hard ceiling
-                        alt_cmd = min(alt_cmd, -25)
-                    elif 0 < height <= ALT_FLOOR_CM:           # hard floor
-                        alt_cmd = max(alt_cmd, 10)
-                commands['vertical'] = int(np.clip(alt_cmd, -ALT_LIMIT, ALT_LIMIT))
+                # Damp toward ~zero-mean; the Tello's built-in hover holds altitude.
+                commands['vertical'] = int(np.clip(
+                    commands['vertical'] * VERT_GAIN - VERT_TRIM, -VERT_LIMIT, VERT_LIMIT))
 
             # Cap yaw so the noisy turn decode doesn't just spin it in place
             commands['yaw'] = int(np.clip(commands['yaw'], -YAW_LIMIT, YAW_LIMIT))

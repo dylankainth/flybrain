@@ -209,17 +209,16 @@ brain" claim is defensible:
    ommatidial viewing directions (Buchner 1971) map the camera to R1-6
    luminance, letting the connectome compute motion itself instead of having
    optic flow injected directly. See `docs/eye_map.md`.
-7. **Flight stabilization** (altitude hold + launch settle + yaw cap):
-   - **Altitude hold** — the neural `vertical` output is open-loop *velocity*
-     with a bias, so with no feedback the drone climbed into the ceiling. The
-     loop now reads the Tello altitude (ToF, falling back to barometer) and
-     holds `ALT_TARGET_CM` (default 120 cm) with a P-controller, letting the
-     brain nudge at limited authority and enforcing a hard ceiling/floor. A
-     **0/invalid reading is treated as "unknown" (no forced climb)** — a bad
-     `height=0` previously pinned the throttle to max climb.
-   - **Launch settle** (`LAUNCH_RAMP_S`) — for the first few seconds it does a
-     gentle steady climb and ramps the brain's forward/yaw authority 0→1, so it
-     doesn't lurch and tip the instant it leaves the ground.
+7. **Flight stabilization** (vertical taming + yaw cap):
+   - **Open-loop vertical** — the neural `vertical` output is a *velocity*
+     command with an upward bias, so the drone climbed into the ceiling.
+     Closed-loop altitude hold needs a height sensor, but some Tellos report
+     `height=0`/unreliable state (visible as decode warnings at connect), which
+     pins a P-controller to max climb. So instead: a brief climb to clear the
+     ground (`LAUNCH_CLIMB_S`), then damp `vertical` toward ~zero-mean
+     (`VERT_GAIN`/`VERT_TRIM`/`VERT_LIMIT`) and let the Tello's **built-in
+     barometric hover** hold altitude (it does so automatically when rc vertical
+     ≈ 0). Keeps the brain's dynamic forward/yaw movement without a climb.
    - **Yaw cap** (`YAW_LIMIT`) — the raw turn decode swings ~±70 and would spin
      the drone in place; capped to a sane range.
 
